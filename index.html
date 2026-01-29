@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>OUR MOVIE - 婚礼首映礼</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Noto+Serif+SC:wght@200;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #c5a059;
+            --bg-color: #050505;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: #fff;
+            overflow-x: hidden;
+            font-family: 'Noto Serif SC', serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .film-grain::after {
+            content: "";
+            position: fixed;
+            top: -100%; left: -100%;
+            width: 300%; height: 300%;
+            background-image: url("https://upload.wikimedia.org/wikipedia/commons/7/76/1k_pnt_noise.png");
+            opacity: 0.05;
+            pointer-events: none;
+            z-index: 2000;
+            animation: grain 8s steps(10) infinite;
+        }
+
+        @keyframes grain {
+            0%, 100% { transform: translate(0, 0); }
+            10% { transform: translate(-5%, -10%); }
+            50% { transform: translate(-5%, -20%); }
+            90% { transform: translate(-10%, -5%); }
+        }
+
+        .letterbox {
+            position: fixed;
+            left: 0; width: 100%; height: 8vh;
+            background: #000;
+            z-index: 1000;
+            pointer-events: none;
+            transition: height 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .letterbox-top { top: 0; border-bottom: 1px solid rgba(197, 160, 89, 0.1); }
+        .letterbox-bottom { bottom: 0; border-top: 1px solid rgba(197, 160, 89, 0.1); }
+        
+        .vignette {
+            position: fixed;
+            inset: 0;
+            box-shadow: inset 0 0 150px rgba(0,0,0,0.9);
+            pointer-events: none;
+            z-index: 900;
+        }
+
+        @keyframes fadeInUpBlur {
+            from { opacity: 0; transform: translateY(40px); filter: blur(10px); }
+            to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+        .animate-entrance {
+            animation: fadeInUpBlur 2.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+
+        .ken-burns {
+            animation: kenBurns 30s ease-in-out infinite alternate;
+        }
+        @keyframes kenBurns {
+            from { transform: scale(1.0); }
+            to { transform: scale(1.15) rotate(1deg); }
+        }
+
+        .gold-text {
+            color: var(--gold);
+            text-shadow: 0 0 15px rgba(197, 160, 89, 0.3);
+        }
+
+        ::-webkit-scrollbar { display: none; }
+        html {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .countdown-num {
+            font-family: 'Playfair Display', serif;
+            font-size: 8rem;
+            color: var(--gold);
+            opacity: 0;
+            position: absolute;
+            animation: countdownScale 1s linear forwards;
+        }
+        @keyframes countdownScale {
+            0% { transform: scale(2); opacity: 0; filter: blur(10px); }
+            50% { transform: scale(1); opacity: 1; filter: blur(0); }
+            100% { transform: scale(0.5); opacity: 0; filter: blur(5px); }
+        }
+    </style>
+</head>
+<body class="film-grain">
+    <div class="letterbox letterbox-top"></div>
+    <div class="letterbox letterbox-bottom"></div>
+    <div class="vignette"></div>
+    <div id="root"></div>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        const STORY_DATA = [
+          {
+            id: 1,
+            title: "ACT I: THE ENCOUNTER",
+            subtitle: "2020.05.20 · 镜头初见",
+            image: "https://images.unsplash.com/photo-1518131359143-b893f44a9c87?auto=format&fit=crop&q=80&w=2000",
+            quote: "人生如戏，而你是我生命里最动人的长镜头。在那场不期而遇的雨后，我们的故事悄然开机。"
+          },
+          {
+            id: 2,
+            title: "ACT II: THE JOURNEY",
+            subtitle: "1,200 公里的蒙太奇",
+            image: "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=2000",
+            quote: "不是在最好的时光遇见了你，而是遇见你，才有了最好的时光。穿过半个中国，只为与你同框。"
+          },
+          {
+            id: 3,
+            title: "ACT III: THE VOWS",
+            subtitle: "2023.12.24 · 永恒定格",
+            image: "https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?auto=format&fit=crop&q=80&w=2000",
+            quote: "从今以后，剧本的每一页，我们共同书写。你是导演，也是我唯一的主角。"
+          }
+        ];
+
+        const WEDDING_DETAILS = {
+          groom: "张慕寒",
+          bride: "林晓悦",
+          date: "2024.10.10",
+          time: "11:58 AM",
+          location: "悦榕庄 · 临江大礼堂",
+          address: "上海市黄浦区中山东一路 32 号"
+        };
+
+        const CREDITS = [
+          { role: "领衔主演 Starring", names: "张慕寒 & 林晓悦" },
+          { role: "总制片人 Executive Producers", names: "双方父母及至亲" },
+          { role: "特邀嘉宾 Guest Appearance", names: "见证爱情的您" },
+          { role: "公映日期 Release Date", names: "2024年10月10日" }
+        ];
+
+        const BG_MUSIC_URL = "https://assets.mixkit.co/music/preview/mixkit-beautiful-dream-493.mp3";
+
+        const MusicPlayer = ({ audioRef }) => {
+          const [isPlaying, setIsPlaying] = useState(true);
+
+          const toggleMusic = () => {
+            if (audioRef.current) {
+              if (isPlaying) {
+                audioRef.current.pause();
+              } else {
+                audioRef.current.play();
+              }
+              setIsPlaying(!isPlaying);
+            }
+          };
+
+          return (
+            <button 
+              onClick={toggleMusic}
+              className="fixed top-24 right-6 z-[1200] p-3 bg-black/50 border border-gold/30 text-gold hover:bg-gold/10 transition-all"
+              style={{ backdropFilter: 'blur(10px)' }}
+            >
+              {isPlaying ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                  <line x1="23" y1="9" x2="17" y2="15"></line>
+                  <line x1="17" y1="9" x2="23" y2="15"></line>
+                </svg>
+              )}
+            </button>
+          );
+        };
+
+        const App = () => {
+          const [hasStarted, setHasStarted] = useState(false);
+          const [isCounting, setIsCounting] = useState(false);
+          const [countdown, setCountdown] = useState(5);
+          const [isPaused, setIsPaused] = useState(false);
+          const [showRSVP, setShowRSVP] = useState(false);
+          const [rsvpName, setRsvpName] = useState('');
+          
+          const requestRef = useRef();
+          const lastTimeRef = useRef(0);
+          const audioRef = useRef(null);
+
+          const autoScroll = useCallback((time) => {
+            if (!lastTimeRef.current) lastTimeRef.current = time;
+            const deltaTime = time - lastTimeRef.current;
+            lastTimeRef.current = time;
+
+            if (hasStarted && !isPaused && !showRSVP) {
+              const move = (deltaTime * 0.045); 
+              window.scrollBy(0, move);
+            }
+            requestRef.current = requestAnimationFrame(autoScroll);
+          }, [hasStarted, isPaused, showRSVP]);
+
+          useEffect(() => {
+            requestRef.current = requestAnimationFrame(autoScroll);
+            return () => {
+              if (requestRef.current) cancelAnimationFrame(requestRef.current);
+            };
+          }, [autoScroll]);
+
+          const startPremiere = () => {
+            setIsCounting(true);
+            let count = 5;
+            const timer = setInterval(() => {
+              count -= 1;
+              if (count === 0) {
+                clearInterval(timer);
+                setHasStarted(true);
+                setIsCounting(false);
+                if (audioRef.current) {
+                  audioRef.current.volume = 0;
+                  audioRef.current.play().then(() => {
+                      let vol = 0;
+                      const fade = setInterval(() => {
+                          vol += 0.05;
+                          if (audioRef.current) audioRef.current.volume = Math.min(vol, 0.7);
+                          if (vol >= 0.7) clearInterval(fade);
+                      }, 100);
+                  }).catch(e => console.log("Audio blocked", e));
+                }
+              } else {
+                setCountdown(count);
+              }
+            }, 1000);
+          };
+
+          const handleInteractionStart = () => setIsPaused(true);
+          const handleInteractionEnd = () => setIsPaused(false);
+
+          return (
+            <div 
+              className="relative min-h-screen bg-black select-none overflow-x-hidden"
+              onTouchStart={handleInteractionStart}
+              onTouchEnd={handleInteractionEnd}
+              onMouseDown={handleInteractionStart}
+              onMouseUp={handleInteractionEnd}
+            >
+              <audio ref={audioRef} src={BG_MUSIC_URL} loop playsInline />
+              
+              {hasStarted && <MusicPlayer audioRef={audioRef} />}
+
+              {!hasStarted && (
+                <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black">
+                  {!isCounting ? (
+                    <div className="text-center p-8 max-w-xs w-full animate-entrance">
+                      <p className="text-[10px] tracking-[0.8em] uppercase text-gold/60 mb-12 font-light">Premiere Invitation</p>
+                      
+                      <h2 className="text-white font-serif italic text-xl mb-24 tracking-[0.3em] leading-relaxed">
+                        每一个伟大的故事<br/>都有一个开始
+                      </h2>
+
+                      <button 
+                        onClick={startPremiere}
+                        className="group relative w-full py-6 border border-gold/40 flex items-center justify-center gap-4 bg-black/50 overflow-hidden"
+                      >
+                        <span className="relative z-10 text-white tracking-[0.8em] text-xs font-semibold ml-2">
+                          开启放映
+                        </span>
+                        <div className="absolute inset-0 bg-gold/5 group-active:bg-gold/20 transition-colors"></div>
+                      </button>
+
+                      <p className="mt-16 text-[9px] text-white/20 tracking-[0.4em] uppercase font-light">Directed by Destiny</p>
+                    </div>
+                  ) : (
+                    <div className="relative flex items-center justify-center w-full h-full">
+                       <div className="absolute w-72 h-72 border border-white/10 rounded-full"></div>
+                       <div className="absolute w-64 h-64 border border-white/20 rounded-full animate-pulse"></div>
+                       <div className="countdown-num" key={countdown}>{countdown}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <section className="h-screen flex flex-col items-center justify-center text-center px-10">
+                <div className={hasStarted ? "animate-entrance" : "opacity-0"}>
+                  <p className="text-[10px] tracking-[1em] uppercase gold-text mb-10 opacity-60">A Private Screening Of</p>
+                  <h1 className="text-5xl md:text-7xl font-serif italic mb-8 tracking-wider leading-tight text-white">
+                    {WEDDING_DETAILS.groom} <br/> 
+                    <span className="text-2xl opacity-30 my-4 inline-block">&</span> <br/>
+                    {WEDDING_DETAILS.bride}
+                  </h1>
+                  <div className="w-12 h-[1px] bg-gold/40 mx-auto mt-12 mb-10"></div>
+                  <p className="text-xs font-light tracking-[0.6em] text-white/60">OUR UNIVERSE · OUR STORY</p>
+                </div>
+              </section>
+
+              {STORY_DATA.map((chapter) => (
+                <section key={chapter.id} className="relative h-screen overflow-hidden">
+                  <div className="absolute inset-0">
+                    <img 
+                      src={chapter.image} 
+                      alt={chapter.title}
+                      className="w-full h-full object-cover ken-burns opacity-60 grayscale-[30%] brightness-75"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/70"></div>
+                  </div>
+                  
+                  <div className="relative h-full flex flex-col justify-end p-12 pb-40">
+                    <div className="animate-entrance" style={{ animationDelay: '0.5s' }}>
+                        <p className="text-[9px] tracking-[0.5em] gold-text mb-4 italic font-bold uppercase">{chapter.title}</p>
+                        <h2 className="text-3xl font-serif mb-8 leading-tight tracking-widest text-white">{chapter.subtitle}</h2>
+                        {chapter.quote && (
+                        <p className="text-xs font-light text-white/70 italic max-w-[260px] border-l border-gold/40 pl-6 leading-relaxed">
+                            {chapter.quote}
+                        </p>
+                        )}
+                    </div>
+                  </div>
+                </section>
+              ))}
+
+              <section className="min-h-screen flex items-center justify-center bg-black py-32 px-10">
+                <div className="w-full max-w-md text-center">
+                  <div className="space-y-24">
+                    <div className="space-y-8">
+                      <p className="text-[10px] tracking-[0.8em] uppercase gold-text opacity-70">Mark The Premiere</p>
+                      <h3 className="text-6xl font-serif tracking-tighter text-white">{WEDDING_DETAILS.date}</h3>
+                      <p className="text-lg font-light tracking-[0.4em] italic text-gold/80">{WEDDING_DETAILS.time}</p>
+                    </div>
+
+                    <div className="w-[1px] h-32 bg-gradient-to-b from-gold/60 to-transparent mx-auto"></div>
+
+                    <div className="space-y-12">
+                      <p className="text-2xl font-serif tracking-[0.3em] text-white/90">{WEDDING_DETAILS.location}</p>
+                      <p className="text-[11px] opacity-50 uppercase tracking-[0.3em] max-w-[240px] mx-auto leading-relaxed font-light">
+                        {WEDDING_DETAILS.address}
+                      </p>
+                      <button 
+                        className="inline-block mt-8 text-[10px] tracking-[0.6em] uppercase py-5 px-10 border border-gold/30 hover:bg-gold/10 transition-all duration-700 text-gold"
+                        onClick={() => window.open(`https://maps.google.com/?q=${encodeURIComponent(WEDDING_DETAILS.address)}`)}
+                      >
+                        获取导航路线
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="min-h-screen flex flex-col items-center justify-center bg-black py-40">
+                <div className="text-center space-y-20 w-full max-w-xs">
+                  {CREDITS.map((item, idx) => (
+                    <div key={idx} className="space-y-3 opacity-80">
+                      <p className="text-[9px] tracking-[0.6em] uppercase text-gold/60">{item.role}</p>
+                      <p className="text-xl font-serif italic tracking-[0.2em] text-white/90">{item.names}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-40">
+                  <button 
+                    onClick={() => setShowRSVP(true)}
+                    className="group relative px-12 py-5 border border-gold/50 overflow-hidden bg-transparent"
+                  >
+                    <span className="relative z-10 text-[11px] tracking-[1em] gold-text uppercase font-bold">领票入场 RSVP</span>
+                    <div className="absolute inset-0 bg-gold/10 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-1000 origin-left"></div>
+                  </button>
+                </div>
+              </section>
+
+              <section className="h-screen flex flex-col items-center justify-center bg-black text-center px-10">
+                <h2 className="text-6xl font-serif italic opacity-30 mb-16 tracking-[0.5em] text-white">Fin.</h2>
+                <p className="text-[11px] tracking-[1.2em] opacity-40 uppercase gold-text font-bold">敬请光临 · 共证良缘</p>
+                <div className="mt-48">
+                   <button 
+                     onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                     className="text-[9px] tracking-[0.8em] opacity-30 hover:opacity-100 transition-all uppercase border-b border-gold/10 pb-3 text-white"
+                   >
+                     重新观影
+                   </button>
+                </div>
+              </section>
+
+              {showRSVP && (
+                <div className="fixed inset-0 z-[2500] flex items-center justify-center px-6">
+                  <div className="absolute inset-0 bg-black/95 backdrop-blur-xl" onClick={() => setShowRSVP(false)}></div>
+                  <div className="relative w-full max-w-sm bg-zinc-950 border border-gold/30 p-10 text-center animate-entrance overflow-hidden">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-6 bg-black rounded-b-full border-b border-gold/20"></div>
+                    
+                    <h3 className="text-2xl font-serif mb-12 tracking-[0.4em] italic text-gold mt-4">首映礼回执</h3>
+                    
+                    <div className="space-y-8 mb-12">
+                        <div className="relative">
+                            <input 
+                            type="text" 
+                            placeholder="请输入宾客姓名"
+                            className="w-full bg-white/5 border-b border-white/20 px-4 py-4 text-sm text-white focus:outline-none focus:border-gold/60 transition-colors text-center tracking-[0.3em] font-light placeholder:text-white/20"
+                            value={rsvpName}
+                            onChange={(e) => setRsvpName(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <button 
+                      className="w-full py-5 bg-gold text-black text-[11px] tracking-[0.8em] uppercase font-bold hover:bg-white transition-all duration-700"
+                      onClick={() => {
+                        if(!rsvpName.trim()) return;
+                        alert(`确认成功！期待 ${rsvpName} 的光临。`);
+                        setShowRSVP(false);
+                      }}
+                    >
+                      提交确认
+                    </button>
+
+                    <div className="mt-8 border-t border-dashed border-white/10 pt-6">
+                        <p className="text-[9px] tracking-[0.2em] text-white/30 uppercase">Admit One · Premiere Guest</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="fixed bottom-24 left-0 w-full text-center z-[1100] pointer-events-none transition-opacity duration-1000" style={{ opacity: isPaused ? 1 : 0.3 }}>
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-[1px] h-12 bg-gradient-to-b from-gold/40 to-transparent"></div>
+                  <p className="text-[8px] tracking-[1.5em] uppercase font-bold text-gold/60">长按暂停观影</p>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
